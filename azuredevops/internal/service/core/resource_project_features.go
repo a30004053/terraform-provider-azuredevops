@@ -97,6 +97,7 @@ func resourceProjectFeaturesCreateUpdate(ctx context.Context, d *schema.Resource
 func resourceProjectFeaturesRead(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	clients := m.(*client.AggregatedClient)
 
+	d.Set("project_id", d.Id())
 	projectID := d.Get("project_id").(string)
 	featureStates := d.Get("features").(map[string]interface{})
 	currentFeatureStates, err := getConfiguredProjectFeatureStates(ctx, clients.FeatureManagementClient, &featureStates, projectID)
@@ -138,11 +139,14 @@ func getConfiguredProjectFeatureStates(ctx context.Context, fc featuremanagement
 		return nil, err
 	}
 
-	for k := range *currentFeatureStates {
-		if _, ok := (*featureStates)[string(k)]; !ok {
-			delete(*currentFeatureStates, k)
+	if len(*featureStates) != 0 {
+		for k := range *currentFeatureStates {
+			if _, ok := (*featureStates)[string(k)]; !ok {
+				delete(*currentFeatureStates, k)
+			}
 		}
 	}
+
 	return currentFeatureStates, nil
 }
 
@@ -172,7 +176,7 @@ func updateProjectFeatureStates(ctx context.Context, fc featuremanagement.Client
 			ScopeValue: &projectID,
 		})
 		if nil != err {
-			return fmt.Errorf(" Faild to update project features. Feature type: %s,  Error: %+v", f, err)
+			return fmt.Errorf(" Failed to update project features. Feature type: %s,  Error: %+v", f, err)
 		}
 	}
 	return nil
@@ -227,7 +231,7 @@ func validateProjectFeatures(i interface{}, k string) ([]string, []error) {
 	m := i.(map[string]interface{})
 
 	if len(m) <= 0 {
-		errors = append(errors, fmt.Errorf("Feature map must contain at least on entry"))
+		errors = append(errors, fmt.Errorf("Feature map must contain at least one entry"))
 	}
 	for feature, state := range m {
 		if _, ok := projectFeatureNameMapReverse[ProjectFeatureType(strings.ToLower(feature))]; !ok {
